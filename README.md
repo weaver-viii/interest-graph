@@ -237,7 +237,11 @@ We have over 5k modeled interests, and while we try to model the most popular
 interests that are applicable over a wide range of applications, we do not
 currently model everything. To check whether your topic is currently modeled,
 visit our [Topic Search
-Page](http://interest-graph.getprismatic.com/topic/search/human).
+Page](http://interest-graph.getprismatic.com/topic/search/human).  Although we
+strongly encourage exploring the set of available topics via search -- it will
+return results even if there is no substring match -- the [full
+list](http://interest-graph.getprismatic.com/topic/all/human) of topics is also
+available.
 
 ##You don’t currently model my interest. Where can I submit a request for you to model a new interest?
 
