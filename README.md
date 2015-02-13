@@ -171,7 +171,7 @@ return a `400` status code with a message describing the failure.
 
 ### Search for an Interest
 
-    GET /topics/search?search-query=Q
+    GET /topic/search?search-query=Q
 
 #### Parameters
 
