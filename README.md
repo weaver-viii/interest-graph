@@ -9,6 +9,7 @@ Table of Contents
     * [What does this do?](#what-does-this-do)
       * [Topic Tagging](#topic-tagging)
       * [Topic Similarity](#topic-similarity)
+      * [Aspect Tagging](#aspect-tagging)
     * [Is the service still in ALPHA?](#is-the-service-still-in-alpha)
     * [How do I use the service?](#how-do-i-use-the-service)
       * [Step 1: Acquire an access token](#step-1-acquire-an-access-token)
@@ -21,17 +22,20 @@ Table of Contents
       * [Tag Text with Interests](#tag-text-with-interests)
         * [Input (request JSON body)](#input-request-json-body-1)
         * [Response](#response-1)
+      * [Tag URL with Aspects](#tag-url-with-aspects)
+        * [Input (request JSON body)](#input-request-json-body-2)
+        * [Response](#response-2)
       * [Search for an Interest](#search-for-an-interest)
         * [Parameters](#parameters)
-        * [Response](#response-2)
+        * [Response](#response-3)
       * [Search for Topics Related to a Given Topic](#search-for-topics-related-to-a-given-topic)
         * [Parameters](#parameters-1)
-        * [Response](#response-3)
+        * [Response](#response-4)
     * [I think the system made a mistake, where can I report it?](#i-think-the-system-made-a-mistake-where-can-i-report-it)
     * [Do you have the topic I care about?](#do-you-have-the-topic-i-care-about)
+    * [What aspects do you currently model?](#what-aspects-do-you-currently-model)
     * [You don’t currently model my interest. Where can I submit a request for you to model a new interest?](#you-dont-currently-model-my-interest-where-can-i-submit-a-request-for-you-to-model-a-new-interest)
     * [My question is not listed here.](#my-question-is-not-listed-here)
-
 
 ##What does this do?
 
@@ -47,6 +51,11 @@ determine which interests it is about.
 
 ###Topic Similarity
 The service provides an endpoint for returning the set of topics that are similar to a given query topic.
+
+###Aspect Tagging
+This service automatically analyzes the content of a webpage, analyzes the DOM,
+and reports the aspects, which describe the structure or function of the webpage.
+
 
 ##Is the service still in ALPHA?
 
@@ -65,7 +74,7 @@ the service, and we will email you an API access token.
 Once you have your access token, you can try tagging a URL or piece of text via
 our web interface. The same
 [http://interest-graph.getprismatic.com](http://interest-graph.getprismatic.com) has input fields
-where you can enter the query URL or text. 
+where you can enter the query URL or text.
 
 You can also make requests programmatically. For example, if we want to run the
 tagging service on the [Wikipedia article about Machine
@@ -74,7 +83,7 @@ service:
 
 
 
-```  
+```
 curl -H "X-API-TOKEN: <API-TOKEN>" 'http://interest-graph.getprismatic.com/url/topic' --data 'url=http%3A%2F%2Fen.wikipedia.org%2Fwiki%2FMachine_learning'
 ```
 
@@ -88,7 +97,7 @@ system, a human-readable topic name `topic`, and a `score`. The score is a real
 value between 0 and 1, and represents the degree to which a significant part of
 article is about the corresponding topic.
 
-As a [Schema](https://github.com/Prismatic/schema): 
+As a [Schema](https://github.com/Prismatic/schema):
 
 ```clojure
 {:topics [{:id long
@@ -122,7 +131,7 @@ Name | Type | Description
 
 A JSON map with a `topics` key that has a list of topics, each with an `id`, `topic` name, and `score`.
 
-As a [Schema](https://github.com/Prismatic/schema): 
+As a [Schema](https://github.com/Prismatic/schema):
 ```clojure
 {:topics [{:id long
            :topic String
@@ -159,7 +168,7 @@ Name | Type | Description
 
 A JSON map with a `topics` key that has a list of topics, each with an `id`, `topic` name, and `score`.
 
-As a [Schema](https://github.com/Prismatic/schema): 
+As a [Schema](https://github.com/Prismatic/schema):
 ```clojure
 {:topics [{:id long
            :topic String
@@ -168,6 +177,46 @@ As a [Schema](https://github.com/Prismatic/schema):
 
 If fewer than 140 characters are passed in the body, then the server will
 return a `400` status code with a message describing the failure.
+
+### Tag URL with Aspects
+
+    POST /url/aspect
+
+#### Input (request JSON body)
+
+Name | Type | Description
+-----|------|--------------
+`url`|`string` | URL to tag with aspects.
+
+#### Response
+
+A JSON map with an `aspects` key that maps to a recursively defined structured
+predictions map.  The structured predictions map recursively specifies the path
+from the root of the Aspect Hierarchy to the most specific aspect relevant to
+the query. The key in the aspects map corresponds to the attribute key, and the
+value is another map containing the value for the attribute under the `value`
+key, the score for the aspect under the `score` key -- representing the degree
+of confidence that we believe the article matches the aspect at that level. If
+applicable, there is also a map of `sub-aspects` which contain predictions for
+more specific aspects that appear below the general aspect. This `sub-aspects`
+map is recursively structured similar to the top-level aspects map.
+
+As a [Schema](https://github.com/Prismatic/schema), the structured predictions are:
+```clojure
+(s/defschema StructuredPredictions
+  {(s/named String "attribute key")
+          {:value (s/named String "attribute value")
+           :score double
+           (s/optional-key :sub-aspects) (s/recursive #'StructuredPredictions)}})
+```
+
+The full response is:
+```clojure
+{:aspects StructuredPredictions}
+```
+
+
+
 
 ### Search for an Interest
 
@@ -184,7 +233,7 @@ Name | Type | Description
 
 A JSON map with a `results` key that has a list of topics, each with an `id` and `topic` name.
 
-As a [Schema](https://github.com/Prismatic/schema): 
+As a [Schema](https://github.com/Prismatic/schema):
 ```clojure
 {:results [{:id long
            :topic String}]}
@@ -208,7 +257,7 @@ Note: topic IDs can be determined by looking at the topic tags returned from a c
 
 A JSON map with a `topics` key that has a list of topics, each with an `id`, `topic` name, and similarity `score`.
 
-As a [Schema](https://github.com/Prismatic/schema): 
+As a [Schema](https://github.com/Prismatic/schema):
 ```clojure
 {:topics [{:id long
            :topic String
@@ -242,6 +291,144 @@ strongly encourage exploring the set of available topics via search -- it will
 return results even if there is no substring match -- the [full
 list](http://interest-graph.getprismatic.com/topic/all/human) of topics is also
 available.
+
+##What aspects do you currently model?
+
+The Aspect Hierarchy organizes the web into a taxonomy of classes. It is
+structured from general to specific, where each class (e.g. *Article*) can be
+further refined into subclasses based on more specific attributes (e.g. *News*
+vs. *Interview*).
+
+![aspect hierarchy](images/aspect-hierarchy.png)
+
+Each oval represents a class of webpages, and each diamond is an attribute that
+further partitions the webpages of its parent into mutually exclusive
+subclasses. For example, every webpage has exactly one *type* (e.g. *Image*,
+*Article*, *Commerce*, or *Other*), and every *Article* is further classified
+into a single *content* type. Therefore, a webpage can’t be both an *Event* and
+a *Review* because it can’t have *type* both *Commerce* an *Article*, but it
+can be both an *Event* and *Risque*.
+
+Currently, there are two top-level classifications: *type* and *flag_nsfw*:
+
+The *type* attribute partitions webpages into mutually exclusive sets of
+content types according to the primary focus of the webpage.
+
+<table>
+  <tr>
+    <th>Content Type</th>
+    <th>Primary Focus of Webpage</th>
+    <th>Example URL</th>
+  </tr>
+  <tr>
+    <td><i>Image</i></td>
+    <td>image</td>
+    <td><a href="http://the-toast.net/2015/03/02/emily-dickinson-dining-cartoon/">example</a></td>
+  </tr>
+  <tr>
+    <td><i>Article</i></td>
+    <td>textual content</td>
+    <td><a href="http://www.bbc.com/news/technology-31620759">example</a></td>
+  </tr>
+  <tr>
+    <td><i>Audio</i></td>
+    <td>audiofile such as song, podcast</td>
+    <td><a href="https://itunes.apple.com/us/album/hearts-i-leave-behind-feat./id969744516">example</a></td>
+  </tr>
+  <tr>
+    <td><i>Video</i></td>
+    <td>video</td>
+    <td><a href="https://www.youtube.com/watch?v=rI8tNMsozo0">example</a></td>
+  </tr>
+  <tr>
+    <td><i>Commerce</i></td>
+    <td>offer a product or other entity </td>
+    <td><a href="https://www.etsy.com/listing/223653209/complete-set-golden-girls-prayer-candles">example</a></td>
+  </tr>
+</table>
+
+
+The *Article* class is further refined according to the primary focus of the content of the text.
+
+<table>
+  <tr>
+    <th>Type of Content</th>
+    <th>Primary Focus of Content</th>
+    <th>Example URL</th>
+  </tr>
+  <tr>
+    <td><i>Review</i></td>
+    <td>review of a product, piece of media, or app</td>
+    <td><a href="http://magazine.good.is/articles/leave-the-bees-in-peace">example</a></td>
+  </tr>
+  <tr>
+    <td><i>News</i></td>
+    <td>story about a recent or significant event</td>
+    <td><a href="http://www.bbc.com/news/technology-31620759">example</a></td>
+  </tr>
+  <tr>
+    <td><i>Recipe</i></td>
+    <td>instructions for preparing a dish</td>
+    <td><a href="http://www.uncommondesignsonline.com/chocolate-banana-cupcakes-peanut-butter-icing/">example</a></td>
+  </tr>
+  <tr>
+    <td><i>Deal</i></td>
+    <td>timely savings on product or service, but not a direct page where the product can be purchased</td>
+    <td><a href="http://www.focusedonthemagic.com/2015/02/kingdom-camera-rentals-giveaway-fun.html">example</a></td>
+  </tr>
+  <tr>
+    <td><i>Interview</i></td>
+    <td>content presented in a question and answer format</td>
+    <td><a href="http://whiskyspeller.blogspot.nl/2015/02/this-place-in-south-africa-where.html">example</a></td>
+  </tr>
+  <tr>
+    <td><i>Listicle</i></td>
+    <td>content presented in a numbered or bulleted list</td>
+    <td><a href="http://www.buzzfeed.com/javiermoreno/i-love-sleeping">example</a></td>
+  </tr>
+</table>
+
+
+Each webpage in the *Commerce* class is partitioned based on the product that is offered.
+
+<table>
+  <tr>
+    <th>Entity Offered</th>
+    <th>Description of Entity</th>
+    <th>Example URL</th>
+  </tr>
+  <tr>
+    <td><i>Product</i></td>
+    <td>a tangible item for purchase</td>
+    <td><a href="https://www.etsy.com/listing/223653209/complete-set-golden-girls-prayer-candles">example</a></td>
+  </tr>
+  <tr>
+    <td><i>Job</i></td>
+    <td>a paid position of employment</td>
+    <td><a href="https://boards.greenhouse.io/prismatic/jobs/46953">example</a></td>
+  </tr>
+  <tr>
+    <td><i>Event</i></td>
+    <td>tickets for purchase to a show, concert, or other event</td>
+    <td><a href="http://www.eventbrite.com/e/big-band-first-fridays-tickets-15692481635">example</a></td>
+  </tr>
+</table>
+
+
+Each of the preceding subdivisions also contain the subclass *Other* that is
+applied to all webpages that do not fall into one of the aforementioned sets.
+
+The top-level *flag_nsfw* attribute partitions webpages into those that are
+safe for work and those that are not. Those that are not safe for work are
+divided into *Porn*, *Softcore*, and *Risque*. *Porn* applies to content that
+contains nudity published by the sex industry. *Softcore* pertains to articles
+that are not *Porn* but whose primary focus is imagery that objectifies people
+in sexual ways. *Risque* is for content that is sexually suggestive, but not
+covered by the first two categories. Note: at the moment, content
+classification for NSFW aspects is determined solely based on the text and
+metadata of the web page -- not the imagery.
+
+
 
 ##You don’t currently model my interest. Where can I submit a request for you to model a new interest?
 
